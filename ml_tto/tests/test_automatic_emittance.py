@@ -1,11 +1,12 @@
-from unittest.mock import patch, Mock, MagicMock
+import os
+
+from unittest.mock import MagicMock
 
 import numpy as np
 import torch
 from cheetah import Segment, Quadrupole, Drift, ParameterBeam
 
 from lcls_tools.common.devices.magnet import Magnet, MagnetMetadata
-from lcls_tools.common.devices.reader import create_magnet
 from lcls_tools.common.devices.screen import Screen
 from lcls_tools.common.frontend.plotting.emittance import plot_quad_scan_result
 from lcls_tools.common.image.roi import CircularROI
@@ -14,7 +15,6 @@ from lcls_tools.common.measurements.screen_profile import (
     ScreenBeamProfileMeasurement,
     ScreenBeamProfileMeasurementResult,
 )
-import matplotlib.pyplot as plt
 
 from ml_tto.automatic_emittance.automatic_emittance import (
     MLQuadScanEmittance,
@@ -271,8 +271,15 @@ class TestAutomaticEmittance:
 
         # Load results from file
         loaded_dict = saver.load("emittance_test.h5")
+        os.remove("emittance_test.h5")
 
-        # Check if the loaded dictionary is the same as the original
+        # Check if the loaded dictionary returns the same keys/values as the original
+        # They will not be identical because some objects such as methods
+        # and bools are stored as numpy data types in the h5 file
         assert result_dict.keys() == loaded_dict.keys()
-        # TODO: continue test
-
+        assert all(result_dict["emittance"] == loaded_dict["emittance"])
+        # List of arrays is saved as a dict
+        for original, loaded in zip(
+            result_dict["bmag"], loaded_dict["bmag"].values()
+        ):
+            assert np.array_equal(original, loaded)
